@@ -1,6 +1,6 @@
 # TartanVO: A Generalizable Learning-based VO
 
-TartanVO is a learning-based visual odometry trained on [TartanAir](https://theairlab.org/tartanair-dataset) dataset. It generalizes to multiple datasets and real-world scenarios, and outperforms geometry-based methods in challenging scenes. You can check the [python3](https://github.com/castacks/tartanvo/tree/python3) branch if you are using python3.  
+TartanVO is a learning-based visual odometry trained on [TartanAir](https://theairlab.org/tartanair-dataset) dataset. It generalizes to multiple datasets and real-world scenarios, and outperforms geometry-based methods in challenging scenes. 
 
 Please check out our [Paper](https://arxiv.org/abs/2011.00359). 
 
@@ -16,14 +16,14 @@ Our model is trained purely on simulation data, but it generalizes well to real-
 
 
 ## Setting up the environment in the docker
-We provide a prebuilt [docker image](https://hub.docker.com/repository/docker/amigoshan/tartanvo) and a [dockerfile](docker/tartanvo_ros.dockerfile), which allow you to replicate our setup. The docker image contains everything we need for testing this repo, including cuda, pytorch, cupy, opencv, ROS-melodic and etc. Here are the steps to build the docker image. 
+We provide a prebuilt [docker image](https://hub.docker.com/repository/docker/amigoshan/tartanvo) and a [dockerfile](docker/tartanvo_ros_py3.dockerfile), which allow you to replicate our setup. The docker image contains everything we need for testing this repo, including cuda, pytorch, cupy, opencv, ROS-melodic and etc. Here are the steps to build the docker image. 
 
 1. Install docker and nvidia-docker. You can find online tutorials like [this](https://cnvrg.io/how-to-setup-docker-and-nvidia-docker-2-0-on-ubuntu-18-04/).
 2. Run the docker image and mount the repository into the container, the following commands will automatically download the docker image. 
 ```
 $ git clone https://github.com/castacks/tartanvo.git
 $ cd tartanvo
-$ nvidia-docker run -it --rm --network host --ipc=host -v $PWD:/tartanvo amigoshan/tartanvo:latest
+$ nvidia-docker run -it --rm --network host --ipc=host -v $PWD:/tartanvo amigoshan/tartanvo:py3
 $ cd tartanvo
 ```
 3. Now it's all set. Continuing the following steps inside the container.
@@ -104,7 +104,7 @@ The `vo_trajectory_from_folder.py` script shows an example of running TartanVO o
 
 - Testing on KITTI
 ```
-$ python vo_trajectory_from_folder.py  --model-name tartanvo_1914.pkl \
+$ python3 vo_trajectory_from_folder.py  --model-name tartanvo_1914.pkl \
                                        --kitti \
                                        --batch-size 1 --worker-num 1 \
                                        --test-dir data/KITTI_10/image_left \
@@ -113,7 +113,7 @@ $ python vo_trajectory_from_folder.py  --model-name tartanvo_1914.pkl \
 - Testing on EuRoC
 ```
 
-$ python vo_trajectory_from_folder.py  --model-name tartanvo_1914.pkl \
+$ python3 vo_trajectory_from_folder.py  --model-name tartanvo_1914.pkl \
                                        --euroc \
                                        --batch-size 1 --worker-num 1 \
                                        --test-dir data/EuRoC_V102/image_left \

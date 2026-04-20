@@ -54,6 +54,7 @@ class EvalConfig:
     image_width: int = 1280         # resolution of Omniworld-Game
     image_height: int = 720
     default_fps: float = 24.0
+    metadata_csv: str = ""
 
     def __post_init__(self):
         # set defaults for output directory
@@ -103,9 +104,10 @@ class SceneInfo:
     split_num: int
     splits: list[list[int]]   # splits[i] = list of frame indices
     fps: float
+    metric_scale: float = 1.0
 
     @staticmethod
-    def load(scene_dir: str, default_fps: float = 24.0) -> "SceneInfo":
+    def load(scene_dir: str, default_fps: float = 24.0, metadata_csv: str = "") -> "SceneInfo":
         scene_id = os.path.basename(scene_dir)
 
         # Parse split_info.json
@@ -128,11 +130,20 @@ class SceneInfo:
                 if match:
                     fps = float(match.group())
 
+        metric_scale = 1.0
+        if metadata_csv and os.path.exists(metadata_csv):
+            with open(metadata_csv, "r") as f:
+                for row in csv.DictReader(f):
+                    if row["UID"] == scene_id:
+                        metric_scale = float(row["Metric Scale"])
+                        break
+
         return SceneInfo(
             scene_id=scene_id,
             split_num=split_num,
             splits=splits,
             fps=fps,
+            metric_scale=metric_scale,
         )
 
 
@@ -196,7 +207,7 @@ def prepare_split(
 
     # --- Write gt_tum.txt ---
     quats = np.array(cam["quats"])   # (N, 4) as [w, x, y, z]
-    trans = np.array(cam["trans"])   # (N, 3)
+    trans = np.array(cam["trans"]) * scene_info.metric_scale
 
     # Normalize quaternions
     norms = np.linalg.norm(quats, axis=1, keepdims=True)
@@ -627,6 +638,9 @@ def parse_args() -> EvalConfig:
         "--stride", type=int, default=1,
         help="Frame stride"
     )
+    parser.add_argument("--metadata_csv", default="",
+        help="Path to omniworld_game_metadata.csv for metric scale"
+    )
     args = parser.parse_args()
 
     config = EvalConfig(
@@ -636,6 +650,7 @@ def parse_args() -> EvalConfig:
         tartanvo_model=args.tartanvo_model,
         tartanvo_dir=args.tartanvo_dir,
         stride=args.stride,
+        metadata_csv=args.metadata_csv,
     )
     config.validate()
     return config
@@ -662,8 +677,8 @@ def main():
         print(f"{'='*60}")
 
         scene_dir = config.scene_dir(scene_id)
-        scene_info = SceneInfo.load(scene_dir, config.default_fps)
-        print(f"  Splits: {scene_info.split_num} | FPS: {scene_info.fps}")
+        scene_info = SceneInfo.load(scene_dir, config.default_fps, config.metadata_csv)
+        print(f"  Splits: {scene_info.split_num} | FPS: {scene_info.fps} | Metric scale: {scene_info.metric_scale:.4f}")
 
         scene_split_results = []
 

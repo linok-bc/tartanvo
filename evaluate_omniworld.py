@@ -206,28 +206,40 @@ def prepare_split(
         f.write(f"{focal} {focal} {cx} {cy}\n")
 
     # --- Write gt_tum.txt ---
-    quats = np.array(cam["quats"])   # (N, 4) as [w, x, y, z]
-    trans = np.array(cam["trans"]) * scene_info.metric_scale
+    from scipy.spatial.transform import Rotation as R
 
-    # Normalize quaternions
-    norms = np.linalg.norm(quats, axis=1, keepdims=True)
-    quats = quats / norms
-
-    # Ensure consistent sign (w > 0)
-    sign = np.sign(quats[:, 0:1])
-    sign[sign == 0] = 1
-    quats = quats * sign
-
+    quats_wxyz = np.array(cam["quats"])   # world-to-camera, [w, x, y, z]
+    trans_w2c = np.array(cam["trans"])    # world-to-camera translation
+    
+    # Normalize quats and convert to xyzw for scipy
+    norms = np.linalg.norm(quats_wxyz, axis=1, keepdims=True)
+    quats_wxyz = quats_wxyz / norms
+    quats_xyzw = np.concatenate([quats_wxyz[:, 1:], quats_wxyz[:, :1]], axis=1)
+    
+    rotations_cw = R.from_quat(quats_xyzw).as_matrix()
+    
     gt_tum_path = os.path.join(out_dir, "gt_tum.txt")
     with open(gt_tum_path, "w") as f:
         for i in range(num_frames):
+            rotation_cw = rotations_cw[i]
+            t_cw = trans_w2c[i]
+    
+            # Invert to camera-to-world
+            rotation_wc = rotation_cw.T
+            t_wc = -rotation_wc @ t_cw
+    
+            # Apply metric scale
+            t_wc = t_wc * scene_info.metric_scale
+    
+            # Back to quaternion (xyzw)
+            quat_wc_xyzw = R.from_matrix(rotation_wc).as_quat()
+            qx, qy, qz, qw = quat_wc_xyzw
+    
             timestamp = float(i)
-            tx, ty, tz = trans[i]
-            w, x, y, z = quats[i]
-            # TUM format: timestamp tx ty tz qx qy qz qw
+            tx, ty, tz = t_wc
             f.write(
                 f"{timestamp:.6f} {tx:.8f} {ty:.8f} {tz:.8f} "
-                f"{x:.8f} {y:.8f} {z:.8f} {w:.8f}\n"
+                f"{qx:.8f} {qy:.8f} {qz:.8f} {qw:.8f}\n"
             )
 
     # --- Symlink images ---
